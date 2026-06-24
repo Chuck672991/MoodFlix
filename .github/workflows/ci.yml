@@ -2,7 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main]      # Change to 'master' if needed
+  pull_request:           # ← Added
+    branches: [main]      # ← Added
 
 jobs:
   lint:
@@ -13,6 +15,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'    # ← Added (caching)
       - run: npm ci
       - run: npm run lint
 
@@ -24,25 +27,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'    # ← Added
       - run: npm ci
       - run: npm test
 
   build:
     name: Build
-    needs: [lint, test]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest    # ← Removed 'needs' (3 parallel jobs)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'    # ← Added
       - run: npm ci
       - run: npm run build
 
   deploy:
     name: Deploy to EC2
-    needs: [build]
+    needs: [lint, test, build]    # Deploy waits for all 3
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'    # ← Only on push, not PR
     steps:
       - name: SSH Deploy
         uses: appleboy/ssh-action@v1.0.0
